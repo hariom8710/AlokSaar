@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}AI Copilot — AlokSaar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="eyebrow">AI Pharmacy Assistant</span>
+    <h1 class="page-title">Ask AlokSaar anything about your business.</h1>
+    <p class="page-subtitle">Grounded in your live sales, stock &amp; expiry data — plus pharmacy knowledge.</p>
+  </div>
+</div>
+
+<div class="suggested-prompts" id="suggested-prompts" style="text-align: center;">
+  <button class="suggested-prompt" data-prompt="Hi! What can you help me with?">👋 Say hi</button>
+  <button class="suggested-prompt" data-prompt="Why is my profit low this month?">Why is my profit low this month?</button>
+  <button class="suggested-prompt" data-prompt="Which medicines should I order next week?">Which medicines should I order next week?</button>
+  <button class="suggested-prompt" data-prompt="What's expiring soon and what should I do about it?">What's expiring soon?</button>
+  <button class="suggested-prompt" data-prompt="Which items are dead stock right now?">Which items are dead stock?</button>
+</div>
+
+<div class="chat-shell">
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input-bar">
+    <textarea id="chat-input" placeholder="Ask me anything — say hi, or ask about profit, inventory, expiry, purchasing, compliance…" rows="1"></textarea>
+    <button class="send-btn" id="send-btn">Send</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Insights — AlokSaar{% endblock %}
+{% block content %}
+<div class="insights-shell">
+  <aside class="insights-chat-col">
+    <div class="insights-chat-header">
+      <span class="eyebrow">Insights Copilot</span>
+      <p class="page-subtitle" style="margin-top:2px;">Ask for a chart, table, or comparison — the canvas updates on the right.</p>
+    </div>
+    <div class="chat-messages" id="insights-messages"></div>
+    <div class="chat-input-bar insights-input-bar">
+      <textarea id="insights-input" placeholder="e.g. Show revenue trend for last 2 weeks" rows="1"></textarea>
+      <button class="send-btn" id="insights-send-btn">Send</button>
+    </div>
+  </aside>
+
+  <main class="insights-canvas-col">
+    <div class="insights-canvas-header">
+      <div>
+        <h1 class="page-title" style="font-size:22px;">Canvas</h1>
+        <p class="page-subtitle">Charts, tables, and cards generated from your request appear here.</p>
+      </div>
+      <div class="insights-filters">
+        <select id="filter-range" class="insights-filter-select">
+          <option value="7">Last 7 days</option>
+          <option value="14" selected>Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="60">Last 60 days</option>
+        </select>
+        <input id="custom-range" class="insights-filter-select" type="text" placeholder="e.g. 1 month" aria-label="Custom period">
+        <input id="filter-start" class="insights-filter-select" type="date" aria-label="Start date">
+        <input id="filter-end" class="insights-filter-select" type="date" aria-label="End date">
+        <button class="suggested-prompt" id="refresh-canvas-btn">↻ Refresh</button>
+        <button class="suggested-prompt" id="add-summary-btn">＋ Summary</button>
+        <button class="suggested-prompt" id="add-chart-btn">＋ Chart</button>
+        <button class="suggested-prompt" id="download-report-btn">⇩ Download report</button>
+      </div>
+    </div>
+    <div class="insights-canvas" id="insights-canvas">
+      <div class="empty-state" style="padding: 60px 20px;">
+        Ask something on the left — e.g. "show me a revenue chart" or "table of low stock items" — and it'll render here.
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<script src="{{ url_for('static', filename='js/insights.js') }}"></script>
+{% endblock %}

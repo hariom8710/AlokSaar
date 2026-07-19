@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AlokSaar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="eyebrow">CEO Dashboard</span>
+    <h1 class="page-title">Good morning. Here's where things stand.</h1>
+    <p class="page-subtitle" id="date-line">Loading today's business snapshot…</p>
+  </div>
+</div>
+
+<!-- Health score + snapshot row -->
+<div class="grid grid-2 section" style="grid-template-columns: 1fr 2fr;">
+  <div class="card health-score-card" id="health-score-card">
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" width="130" height="130" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r="54" fill="none" stroke="#24305E" stroke-width="10"/>
+        <circle id="gauge-arc" cx="65" cy="65" r="54" fill="none" stroke="#F5B942" stroke-width="10"
+                stroke-linecap="round" stroke-dasharray="0 339.3" transform="rotate(-90 65 65)"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-score" id="health-score-num">--</div>
+        <div class="gauge-label">/100</div>
+      </div>
+    </div>
+    <div class="health-components" id="health-components">
+      <div class="card-label">Business Health Score</div>
+    </div>
+  </div>
+
+  <div class="grid grid-4" id="snapshot-grid">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- Sales trend chart -->
+<div class="section">
+  <div class="card chart-card dashboard-chart-card">
+    <div class="card-label">Sales Trend — Last 14 Days</div>
+    <div class="chart-canvas-wrap"><canvas id="salesChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Alerts row -->
+<div class="grid grid-3 section">
+  <div class="card dashboard-fixed-card">
+    <div class="section-title" style="font-size:15px; margin-bottom:10px;">⚠ Expiring Soon</div>
+    <div id="expiry-list" class="dashboard-scroll-area"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="card dashboard-fixed-card">
+    <div class="section-title" style="font-size:15px; margin-bottom:10px;">📉 Low Stock</div>
+    <div id="lowstock-list" class="dashboard-scroll-area"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="card dashboard-fixed-card">
+    <div class="section-title" style="font-size:15px; margin-bottom:10px;">💤 Dead Stock</div>
+    <div id="deadstock-list" class="dashboard-scroll-area"><div class="empty-state">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Profit leak + purchase plan -->
+<div class="grid grid-2 section">
+  <div class="card dashboard-fixed-card">
+    <div class="section-title" style="font-size:15px; margin-bottom:10px;">🔍 AI Profit Leak Detector</div>
+    <div id="profit-leak-content" class="dashboard-scroll-area"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="card dashboard-fixed-card">
+    <div class="section-title" style="font-size:15px; margin-bottom:10px;">📦 Next Week Purchase Plan</div>
+    <div id="purchase-plan-content" class="dashboard-scroll-area"><div class="empty-state">Loading…</div></div>
+  </div>
+</div>
+
+<div class="card" style="text-align:center; padding: 20px; margin-top: 8px;">
+  <a href="{{ url_for('dashboard.chat_page') }}" style="color: var(--gold); text-decoration:none; font-weight:600; font-size: 14px;">
+    Ask AlokSaar a question about your business →
+  </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

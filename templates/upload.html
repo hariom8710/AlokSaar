@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Upload Data — AlokSaar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="eyebrow">Data Import</span>
+    <h1 class="page-title">Upload your pharmacy's real data.</h1>
+    <p class="page-subtitle">Import order matters: Suppliers → Medicines → Stock Batches → Sales / Purchases / Stock-Outs. Uploads only add data — nothing existing is deleted.</p>
+  </div>
+</div>
+
+<div class="grid grid-2" id="upload-cards"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

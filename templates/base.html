@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}AlokSaar{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script>
+  (function () {
+    var saved = localStorage.getItem("aloksaar_theme");
+    if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  })();
+</script>
+</head>
+<body>
+<button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-mark">☀</span>
+      <div class="brand-text">
+        <span class="brand-name">AlokSaar</span>
+        <span class="brand-sub">AI Pharmacy Assistant</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">◈</span> Dashboard
+      </a>
+      <a href="{{ url_for('dashboard.chat_page') }}" class="nav-link {% if active == 'chat' %}active{% endif %}">
+        <span class="nav-icon">◎</span> AI Chat
+      </a>
+      <a href="{{ url_for('insights.insights_page') }}" class="nav-link {% if active == 'insights' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Insights Canvas
+      </a>
+      <a href="{{ url_for('upload.upload_page') }}" class="nav-link {% if active == 'upload' %}active{% endif %}">
+        <span class="nav-icon">⇧</span> Upload Data
+      </a>
+      <a href="{{ url_for('suppliers.suppliers_page') }}" class="nav-link {% if active == 'suppliers' %}active{% endif %}">
+        <span class="nav-icon">◆</span> Suppliers
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle day/night mode">
+      <span class="theme-toggle-icon" id="theme-toggle-icon">🌙</span>
+      <span id="theme-toggle-label">Night mode</span>
+    </button>
+      <p>Illuminate Analyze Advice.<br>Empower every pharmacy.</p>
+    </div>
+  </aside>
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+  document.getElementById("nav-toggle").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.toggle("open");
+  });
+  const themeToggleBtn = document.getElementById("theme-toggle");
+const themeToggleIcon = document.getElementById("theme-toggle-icon");
+const themeToggleLabel = document.getElementById("theme-toggle-label");
+
+function syncThemeToggleUI() {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  themeToggleIcon.textContent = isDark ? "☀" : "🌙";
+  themeToggleLabel.textContent = isDark ? "Day mode" : "Night mode";
+}
+syncThemeToggleUI();
+
+themeToggleBtn.addEventListener("click", () => {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if (isDark) {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("aloksaar_theme", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("aloksaar_theme", "dark");
+  }
+  syncThemeToggleUI();
+  document.dispatchEvent(new CustomEvent("aloksaar-theme-changed"));
+});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
