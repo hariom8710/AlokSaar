@@ -10,6 +10,9 @@ const endDateEl = document.getElementById("filter-end");
 const addSummaryBtn = document.getElementById("add-summary-btn");
 const addChartBtn = document.getElementById("add-chart-btn");
 const downloadReportBtn = document.getElementById("download-report-btn");
+const chatFab = document.getElementById("insights-chat-fab");
+const chatPanel = document.getElementById("insights-chat-panel");
+const chatCloseBtn = document.getElementById("insights-chat-close");
 
 let lastVizRequest = null;
 let canvasCharts = []; // track Chart.js instances so we can destroy on re-render
@@ -33,16 +36,43 @@ function scrollChatToBottom() {
   });
 }
 
+function setChatDrawer(open) {
+  chatPanel.classList.toggle("open", open);
+  chatFab.setAttribute("aria-expanded", String(open));
+  if (open) requestAnimationFrame(() => inputEl.focus());
+}
+
 function addMessage(role, content, isError = false) {
   const msg = document.createElement("div");
   msg.className = `msg ${role}`;
+  msg.dataset.content = content;
   const avatar = role === "assistant" ? "☀" : "🧑";
   const bodyHtml = (role === "assistant" && !isError) ? renderMarkdown(content) : escapeHtml(content);
+  const actionHtml = role === "user"
+    ? `<div class="msg-actions"><button type="button" class="msg-action msg-rewrite" aria-label="Rewrite message" title="Rewrite">✎</button></div>`
+    : `<div class="msg-actions"><button type="button" class="msg-action msg-retry" aria-label="Retry request" title="Retry">↻</button></div>`;
   msg.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
     <div class="msg-bubble ${role === "assistant" ? "md-content" : ""} ${isError ? "msg-error" : ""}">${bodyHtml}</div>
+    ${actionHtml}
   `;
   messagesEl.appendChild(msg);
+  const rewriteBtn = msg.querySelector(".msg-rewrite");
+  if (rewriteBtn) {
+    rewriteBtn.addEventListener("click", () => {
+      inputEl.value = msg.dataset.content || "";
+      inputEl.dispatchEvent(new Event("input"));
+      setChatDrawer(true);
+    });
+  }
+  const retryBtn = msg.querySelector(".msg-retry");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", () => {
+      const userMessages = messagesEl.querySelectorAll(".msg.user");
+      const previousRequest = userMessages[userMessages.length - 1]?.dataset.content;
+      if (previousRequest) sendMessage(previousRequest);
+    });
+  }
   scrollChatToBottom();
   return msg;
 }
@@ -277,6 +307,11 @@ async function generateCanvas(message) {
 }
 
 sendBtn.addEventListener("click", () => sendMessage(inputEl.value));
+chatFab.addEventListener("click", () => setChatDrawer(true));
+chatCloseBtn.addEventListener("click", () => setChatDrawer(false));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setChatDrawer(false);
+});
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
