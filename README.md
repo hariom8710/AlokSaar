@@ -1,8 +1,8 @@
-# AlokSaar — AI Pharmacy Business Copilot
+# AlokSaar — AI Pharmacy Business Assitant
 
 *Illuminate every decision. Empower every pharmacy.*
 
-A conversational AI Pharmacy Business Copilot, ChatGPT/Gemini-style — handles
+A conversational AI Pharmacy Business Assistant, ChatGPT/Gemini-style — handles
 natural conversation (greetings, small talk) as well as grounded business
 analysis (profit, inventory, expiry, purchasing, compliance), backed by a
 real Flask + SQLAlchemy backend, a RAG knowledge base (ChromaDB), and live
@@ -23,7 +23,7 @@ python run.py
 ```
 
 Visit **http://localhost:5000** for the dashboard, or
-**http://localhost:5000/chat** for the AI Copilot chat.
+**http://localhost:5000/chat** for the AI Assistant chat.
 
 No database server, no Postgres, no account setup beyond a free Gemini API
 key. `aloksaar.db` is a single SQLite file created automatically in the
