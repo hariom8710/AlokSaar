@@ -34,10 +34,13 @@ def sales_trend():
     days = request.args.get("days", 14, type=int)
     return jsonify(analytics.sales_trend_series(days=days))
 
-
 @dashboard_bp.route("/api/dashboard/all")
 def dashboard_all():
-    """Single combined endpoint for the dashboard page — replaces 7 separate
-    round-trips with one, cutting load time (especially on cold-start DBs
-    like Neon's free tier)."""
-    return jsonify(analytics.full_dashboard_payload())
+    try:
+        return jsonify(analytics.full_dashboard_payload())
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": str(e)
+        }), 500

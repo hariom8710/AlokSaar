@@ -49,6 +49,13 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_pre_ping": True,
+    "pool_recycle": 180,
+    "pool_size": 5,
+    "max_overflow": 2,
+    }
+
     # ---------- LLM ----------
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
 

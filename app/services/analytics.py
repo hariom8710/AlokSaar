@@ -297,21 +297,41 @@ def inventory_optimizer_suggestions():
             "message": f"No sales recently, {item['current_stock']} units worth ₹{item['value']:.0f} tied up. Consider a discount or return.",
         })
 def full_dashboard_payload():
-    """
-    Bundles every value the dashboard page needs into a single response.
-    Replaces 7 separate API round-trips with one, so the frontend only
-    waits on one database session instead of seven independent ones.
-    Deferred import of forecasting avoids any risk of circular import.
-    """
     from app.services import forecasting
 
+    print("STEP 1: Snapshot")
+    snapshot = todays_snapshot()
+
+    print("STEP 2: Health Score")
+    health = business_health_score()
+
+    print("STEP 3: Expiry")
+    expiry = expiry_risk_items(within_days=60)
+
+    print("STEP 4: Low Stock")
+    low_stock = low_stock_items()
+
+    print("STEP 5: Dead Stock")
+    dead_stock = dead_stock_items()
+
+    print("STEP 6: Profit Leak")
+    profit_leak = profit_leak_report()
+
+    print("STEP 7: Purchase Plan")
+    purchase_plan = forecasting.next_week_purchase_plan()
+
+    print("STEP 8: Sales Trend")
+    sales_trend = sales_trend_series(days=14)
+
+    print("DONE")
+
     return {
-        "snapshot": todays_snapshot(),
-        "health_score": business_health_score(),
-        "expiry_at_risk": expiry_risk_items(within_days=60),
-        "low_stock": low_stock_items(),
-        "dead_stock": dead_stock_items(),
-        "profit_leak": profit_leak_report(),
-        "purchase_plan": forecasting.next_week_purchase_plan(),
-        "sales_trend": sales_trend_series(days=14),
+        "snapshot": snapshot,
+        "health_score": health,
+        "expiry_at_risk": expiry,
+        "low_stock": low_stock,
+        "dead_stock": dead_stock,
+        "profit_leak": profit_leak,
+        "purchase_plan": purchase_plan,
+        "sales_trend": sales_trend,
     }
