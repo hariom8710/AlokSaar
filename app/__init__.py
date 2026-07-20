@@ -35,6 +35,10 @@ def create_app(config_class=Config):
 
     # Initialize the RAG knowledge base (ChromaDB) once at startup
     with app.app_context():
+        #create PostgresSQL tables if they don't exist
+        db.create_all()
+
+        #Initialize the ChromaDB knowledge base
         from app.rag.retriever import init_knowledge_base
         init_knowledge_base(app.config["CHROMA_DB_PATH"])
 
