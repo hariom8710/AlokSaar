@@ -129,7 +129,7 @@ async function loadHistory() {
     const res = await fetch("/api/chat/history");
     const history = await res.json();
     if (history.length === 0) {
-      addMessage("assistant", "Hi! I'm AlokSaar, your AI pharmacy business copilot. Ask me anything — from a quick hello to your profit numbers, inventory, expiry risk, purchasing, or compliance questions.");
+      addMessage("assistant", "Hi! I'm AlokSaar, your AI pharmacy business assistant. Ask me anything — from a quick hello to your profit numbers, inventory, expiry risk, purchasing, or compliance questions.");
     } else {
       history.forEach((m) => addMessage(m.role, m.content));
     }

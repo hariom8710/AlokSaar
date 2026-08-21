@@ -13,20 +13,41 @@ def suppliers_page():
 
 @suppliers_bp.route("/api/suppliers")
 def list_suppliers():
-    suppliers = Supplier.query.all()
-    result = []
-    for s in suppliers:
-        medicine_count = Medicine.query.filter_by(supplier_id=s.id).count()
-        purchase_stats = (
-            db.session.query(
-                func.count(Purchase.id),
-                func.avg(Purchase.unit_cost),
-                func.sum(Purchase.quantity * Purchase.unit_cost),
-            )
-            .filter(Purchase.supplier_id == s.id)
-            .first()
+    medicine_counts = (
+        db.session.query(
+            Medicine.supplier_id,
+            func.count(Medicine.id).label("medicine_count"),
         )
-        order_count, avg_unit_cost, total_spend = purchase_stats
+        .filter(Medicine.supplier_id.isnot(None))
+        .group_by(Medicine.supplier_id)
+        .subquery()
+    )
+    purchase_stats = (
+        db.session.query(
+            Purchase.supplier_id,
+            func.count(Purchase.id).label("order_count"),
+            func.avg(Purchase.unit_cost).label("avg_unit_cost"),
+            func.sum(Purchase.quantity * Purchase.unit_cost).label("total_spend"),
+        )
+        .filter(Purchase.supplier_id.isnot(None))
+        .group_by(Purchase.supplier_id)
+        .subquery()
+    )
+    rows = (
+        db.session.query(
+            Supplier,
+            func.coalesce(medicine_counts.c.medicine_count, 0),
+            func.coalesce(purchase_stats.c.order_count, 0),
+            purchase_stats.c.avg_unit_cost,
+            func.coalesce(purchase_stats.c.total_spend, 0),
+        )
+        .outerjoin(medicine_counts, medicine_counts.c.supplier_id == Supplier.id)
+        .outerjoin(purchase_stats, purchase_stats.c.supplier_id == Supplier.id)
+        .order_by(Supplier.name)
+        .all()
+    )
+    result = []
+    for s, medicine_count, order_count, avg_unit_cost, total_spend in rows:
         result.append({
             **s.to_dict(),
             "medicine_count": medicine_count,

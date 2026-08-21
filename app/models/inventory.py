@@ -16,9 +16,13 @@ class Medicine(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), default=0)
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
 
-    batches = db.relationship("StockBatch", backref="medicine", lazy="selectin", cascade="all, delete-orphan")
-    sales = db.relationship("Sale", backref="medicine", lazy="selectin")
-    purchases = db.relationship("Purchase", backref="medicine", lazy="selectin")
+    # Load these collections only when code explicitly needs them.  The old
+    # selectin strategy fetched every sale and purchase whenever medicines
+    # were listed, which made a small inventory response transfer thousands
+    # of unrelated rows from Neon.
+    batches = db.relationship("StockBatch", backref="medicine", lazy="select", cascade="all, delete-orphan")
+    sales = db.relationship("Sale", backref="medicine", lazy="select")
+    purchases = db.relationship("Purchase", backref="medicine", lazy="select")
 
     @property
     def current_stock(self):

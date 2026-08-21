@@ -9,6 +9,7 @@ over them.
 """
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.models import Medicine, StockBatch, Sale, Purchase, StockOutEvent
 
@@ -19,6 +20,19 @@ LOW_STOCK_MULTIPLIER = 1.0  # stock <= reorder_level => low stock
 
 def _period_start(days: int) -> datetime:
     return datetime.utcnow() - timedelta(days=days)
+
+
+def _medicine_stock_rows():
+    """Return each medicine with its stock total in one database query."""
+    return (
+        db.session.query(
+            Medicine,
+            func.coalesce(func.sum(StockBatch.quantity), 0).label("current_stock"),
+        )
+        .outerjoin(StockBatch, Medicine.id == StockBatch.medicine_id)
+        .group_by(Medicine.id)
+        .all()
+    )
 
 
 def todays_snapshot():
@@ -67,11 +81,11 @@ def todays_snapshot():
 def business_health_score():
     """Composite 0-100 score, like the poster's gauge (Profitability, Inventory,
     Sales Trend, Expiry Risk, Stock Availability)."""
-    medicines = Medicine.query.all()
-    if not medicines:
+    medicine_rows = _medicine_stock_rows()
+    if not medicine_rows:
         return {"score": 0, "label": "No Data", "components": {}}
 
-    total_stock_positions = len(medicines)
+    total_stock_positions = len(medicine_rows)
 
     # Profitability: recent 30-day margin %
     recent_sales = Sale.query.filter(Sale.sale_date >= _period_start(30)).all()
@@ -82,12 +96,7 @@ def business_health_score():
 
     # Inventory: % of medicines within healthy stock band (not low, not excess)
     healthy = 0
-    for m in medicines:
-        stock = (
-                    db.session.query(func.coalesce(func.sum(StockBatch.quantity), 0))
-                    .filter(StockBatch.medicine_id == m.id)
-                    .scalar()
-                )
+    for m, stock in medicine_rows:
         if m.reorder_level <= stock <= m.ideal_stock_level * 1.5:
             healthy += 1
     inventory_score = (healthy / total_stock_positions) * 100
@@ -105,13 +114,13 @@ def business_health_score():
     # Expiry risk: fewer near-expiry batches (by value) = better
     at_risk_value = sum(i["value"] for i in expiry_risk_items())
     total_inventory_value = sum(
-        float(m.unit_cost or 0) * m.current_stock for m in medicines
+        float(m.unit_cost or 0) * stock for m, stock in medicine_rows
     ) or 1
     expiry_ratio = at_risk_value / total_inventory_value
     expiry_score = max(0, 100 - (expiry_ratio * 300))
 
     # Stock availability: % of medicines currently above 0 stock
-    in_stock = sum(1 for m in medicines if m.current_stock > 0)
+    in_stock = sum(1 for _m, stock in medicine_rows if stock > 0)
     availability_score = (in_stock / total_stock_positions) * 100
 
     components = {
@@ -136,9 +145,11 @@ def business_health_score():
 def expiry_risk_items(within_days: int = EXPIRY_WARNING_DAYS):
     """Batches expiring soon, with estimated value at risk."""
     cutoff = date.today() + timedelta(days=within_days)
-    batches = StockBatch.query.filter(
-        StockBatch.expiry_date <= cutoff, StockBatch.quantity > 0
-    ).all()
+    batches = (
+        StockBatch.query.options(joinedload(StockBatch.medicine))
+        .filter(StockBatch.expiry_date <= cutoff, StockBatch.quantity > 0)
+        .all()
+    )
     results = []
     for b in batches:
         med = b.medicine
@@ -159,52 +170,57 @@ def expiry_risk_items(within_days: int = EXPIRY_WARNING_DAYS):
 def dead_stock_items(days: int = DEAD_STOCK_DAYS):
     """Medicines with stock on hand but no sales in the given window."""
     cutoff = _period_start(days)
-
+    last_sales = (
+        db.session.query(
+            Sale.medicine_id,
+            func.max(Sale.sale_date).label("last_sale_date"),
+        )
+        .group_by(Sale.medicine_id)
+        .subquery()
+    )
+    stock_totals = (
+        db.session.query(
+            StockBatch.medicine_id,
+            func.sum(StockBatch.quantity).label("current_stock"),
+        )
+        .group_by(StockBatch.medicine_id)
+        .subquery()
+    )
     medicines = (
         db.session.query(
             Medicine,
-            func.coalesce(func.sum(StockBatch.quantity), 0).label("current_stock")
+            func.coalesce(stock_totals.c.current_stock, 0),
+            last_sales.c.last_sale_date,
         )
-        .outerjoin(StockBatch, Medicine.id == StockBatch.medicine_id)
-        .group_by(Medicine.id)
+        .outerjoin(stock_totals, stock_totals.c.medicine_id == Medicine.id)
+        .outerjoin(last_sales, last_sales.c.medicine_id == Medicine.id)
+        .filter(func.coalesce(stock_totals.c.current_stock, 0) > 0)
+        .filter((last_sales.c.last_sale_date.is_(None)) | (last_sales.c.last_sale_date < cutoff))
         .all()
     )
 
     results = []
-
-    for medicine, current_stock in medicines:
-
-        if current_stock <= 0:
-            continue
-
-        recent_sale = db.session.query(Sale.id).filter(
-            Sale.medicine_id == medicine.id,
-            Sale.sale_date >= cutoff
-        ).first()
-
-        if recent_sale is None:
-            value = float(medicine.unit_cost or 0) * current_stock
-
-            results.append({
-                "medicine_id": medicine.id,
-                "medicine_name": medicine.name,
-                "current_stock": current_stock,
-                "value": round(value, 2),
-            })
+    for medicine, current_stock, _last_sale_date in medicines:
+        value = float(medicine.unit_cost or 0) * current_stock
+        results.append({
+            "medicine_id": medicine.id,
+            "medicine_name": medicine.name,
+            "current_stock": current_stock,
+            "value": round(value, 2),
+        })
 
     return sorted(results, key=lambda x: x["value"], reverse=True)
 
 def low_stock_items():
-    medicines = Medicine.query.all()
     return [
         {
             "medicine_id": m.id,
             "medicine_name": m.name,
-            "current_stock": m.current_stock,
+            "current_stock": stock,
             "reorder_level": m.reorder_level,
         }
-        for m in medicines
-        if 0 < m.current_stock <= m.reorder_level * LOW_STOCK_MULTIPLIER
+        for m, stock in _medicine_stock_rows()
+        if 0 < stock <= m.reorder_level * LOW_STOCK_MULTIPLIER
     ]
 
 
@@ -261,7 +277,7 @@ def profit_leak_report():
     """Detailed breakdown for the 'AI Profit Leak Detector' feature — the kind of
     answer shown in the poster's example conversation."""
     imminent_expiry = expiry_risk_items(within_days=15)
-    stock_outs = StockOutEvent.query.all()
+    stock_outs = StockOutEvent.query.options(joinedload(StockOutEvent.medicine)).all()
     dead_stock = dead_stock_items()
 
     reasons = []
@@ -303,7 +319,7 @@ def profit_leak_report():
 
 
 def inventory_optimizer_suggestions():
-    """Recommends what to restock, reduce, or return — feeds Purchase Advisor / Copilot."""
+    """Recommends what to restock, reduce, or return for the AI Assistant."""
     suggestions = []
     for item in low_stock_items():
         suggestions.append({
@@ -317,34 +333,27 @@ def inventory_optimizer_suggestions():
             "medicine_name": item["medicine_name"],
             "message": f"No sales recently, {item['current_stock']} units worth ₹{item['value']:.0f} tied up. Consider a discount or return.",
         })
+    return suggestions
+
+
 def full_dashboard_payload():
     from app.services import forecasting
 
-    print("STEP 1: Snapshot")
     snapshot = todays_snapshot()
 
-    print("STEP 2: Health Score")
     health = business_health_score()
 
-    print("STEP 3: Expiry")
     expiry = expiry_risk_items(within_days=60)
 
-    print("STEP 4: Low Stock")
     low_stock = low_stock_items()
 
-    print("STEP 5: Dead Stock")
     dead_stock = dead_stock_items()
 
-    print("STEP 6: Profit Leak")
     profit_leak = profit_leak_report()
 
-    print("STEP 7: Purchase Plan")
     purchase_plan = forecasting.next_week_purchase_plan()
 
-    print("STEP 8: Sales Trend")
     sales_trend = sales_trend_series(days=14)
-
-    print("DONE")
 
     return {
         "snapshot": snapshot,

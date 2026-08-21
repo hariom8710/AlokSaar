@@ -16,7 +16,7 @@ specialized modules, matching the layered architecture in the diagram.
 from app.services import memory, context_builder, tool_executor, visualization_builder
 from app.services.intent_service import classify, wants_visualization, GREETING, GENERAL_CHAT
 
-SYSTEM_PROMPT = """You are AlokSaar, an AI Pharmacy Business Copilot — think \
+SYSTEM_PROMPT = """You are AlokSaar, an AI Pharmacy Business Assistant — think \
 ChatGPT or Gemini, but specialized for running a pharmacy. You're talking \
 directly with the pharmacy owner.
 

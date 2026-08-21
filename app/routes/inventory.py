@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy.orm import selectinload
 from app.models import Medicine
 from app.services import analytics
 
@@ -7,7 +8,7 @@ inventory_bp = Blueprint("inventory", __name__)
 
 @inventory_bp.route("/api/inventory")
 def list_inventory():
-    medicines = Medicine.query.all()
+    medicines = Medicine.query.options(selectinload(Medicine.batches)).all()
     return jsonify([m.to_dict() for m in medicines])
 
 

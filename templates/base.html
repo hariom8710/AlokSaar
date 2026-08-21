@@ -15,7 +15,8 @@
 </script>
 </head>
 <body>
-<button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">☰</button>
+<button class="nav-toggle" id="nav-toggle" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
+<button class="nav-scrim" id="nav-scrim" aria-label="Close navigation" tabindex="-1"></button>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
@@ -55,8 +56,28 @@
   </main>
 </div>
 <script>
-  document.getElementById("nav-toggle").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.toggle("open");
+  const navToggle = document.getElementById("nav-toggle");
+  const sidebar = document.getElementById("sidebar");
+  const navScrim = document.getElementById("nav-scrim");
+
+  function setNavigationOpen(isOpen) {
+    sidebar.classList.toggle("open", isOpen);
+    navScrim.classList.toggle("open", isOpen);
+    navToggle.setAttribute("aria-expanded", String(isOpen));
+    navToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+    navToggle.textContent = isOpen ? "×" : "☰";
+  }
+
+  navToggle.addEventListener("click", () => setNavigationOpen(!sidebar.classList.contains("open")));
+  navScrim.addEventListener("click", () => setNavigationOpen(false));
+  sidebar.querySelectorAll(".nav-link").forEach((link) => {
+    link.addEventListener("click", () => setNavigationOpen(false));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setNavigationOpen(false);
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 800) setNavigationOpen(false);
   });
   const themeToggleBtn = document.getElementById("theme-toggle");
 const themeToggleIcon = document.getElementById("theme-toggle-icon");
