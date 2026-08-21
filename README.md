@@ -96,14 +96,40 @@ paid) — switch via `LLM_PROVIDER` in `.env`
 - **Frontend**: Server-rendered Jinja templates + vanilla JS + Chart.js + \
 marked.js/DOMPurify for safe Markdown rendering
 
-## Switching to PostgreSQL later
+## Neon PostgreSQL setup
 
-Uncomment and fill in `DATABASE_URL` in `.env`:
-```dotenv
-DATABASE_URL=postgresql://user:password@host:5432/dbname
+AlokSaar uses two URLs from the Neon **Connect** dialog:
+
+- `DATABASE_URL`: the pooled hostname containing `-pooler`, used by Flask.
+- `DATABASE_URL_UNPOOLED`: the direct hostname, used only for schema setup,
+  migrations, verification, and bulk imports.
+
+Copy `.env.example` to `.env`, replace both placeholder URLs, and retain
+`sslmode=require` and `channel_binding=require`.
+
+Verify the direct connection and initialize the schema:
+
+```powershell
+.\venv\Scripts\python.exe scripts\neon_db.py check
+.\venv\Scripts\python.exe scripts\neon_db.py init-schema
 ```
-Then re-run `python -m data.seed` against the new database. Everything else
-(routes, models, business logic) works identically against either database.
+
+Migrate the existing SQLite data into an empty Neon database:
+
+```powershell
+.\venv\Scripts\python.exe scripts\neon_db.py migrate-sqlite --sqlite aloksaar.db
+```
+
+The migration is transactional, preserves keys, resets PostgreSQL sequences,
+verifies every table count, and refuses to overwrite a non-empty Neon database.
+Verification can be repeated independently:
+
+```powershell
+.\venv\Scripts\python.exe scripts\neon_db.py verify --sqlite aloksaar.db
+```
+
+Do not run `python -m data.seed` against Neon unless you intentionally want to
+erase it. Neon resets require the explicit `ALLOW_DATABASE_RESET=1` safeguard.
 
 ## Project layout
 

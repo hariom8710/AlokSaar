@@ -151,16 +151,18 @@ def _deterministic_visualization(user_message: str, days: int, start_date=None, 
     This keeps Insights usable and ensures every displayed value is sourced
     directly from the database."""
     text = user_message.lower()
-    trend = analytics.sales_trend_series_between(start_date, end_date) if start_date and end_date else analytics.sales_trend_series(days=days)
-    snapshot = analytics.todays_snapshot()
-    blocks = [{
-        "type": "card_grid", "title": "Business Snapshot", "cards": [
-            {"label": "Revenue today", "value": f"₹{snapshot['revenue']:,.0f}", "trend": "up" if snapshot["revenue_change_pct"] >= 0 else "down"},
-            {"label": "Profit today", "value": f"₹{snapshot['profit']:,.0f}", "trend": "up" if snapshot["profit_change_pct"] >= 0 else "down"},
-            {"label": "Orders today", "value": str(snapshot["orders"]), "trend": "neutral"},
-            {"label": "Low-stock items", "value": str(snapshot["low_stock_count"]), "trend": "down" if snapshot["low_stock_count"] else "neutral"},
-        ]
-    }]
+    blocks = []
+
+    if any(word in text for word in ("summary", "snapshot", "overview", "dashboard", "report")):
+        snapshot = analytics.todays_snapshot()
+        blocks.append({
+            "type": "card_grid", "title": "Business Snapshot", "cards": [
+                {"label": "Revenue today", "value": f"₹{snapshot['revenue']:,.0f}", "trend": "up" if snapshot["revenue_change_pct"] >= 0 else "down"},
+                {"label": "Profit today", "value": f"₹{snapshot['profit']:,.0f}", "trend": "up" if snapshot["profit_change_pct"] >= 0 else "down"},
+                {"label": "Orders today", "value": str(snapshot["orders"]), "trend": "neutral"},
+                {"label": "Low-stock items", "value": str(snapshot["low_stock_count"]), "trend": "down" if snapshot["low_stock_count"] else "neutral"},
+            ]
+        })
 
     if any(word in text for word in ("low stock", "inventory", "purchase", "restock")):
         rows = analytics.low_stock_items()
@@ -171,6 +173,7 @@ def _deterministic_visualization(user_message: str, days: int, start_date=None, 
         blocks.append({"type": "table", "title": "Expiry Risk", "columns": ["Medicine", "Batch", "Days left", "Units"],
                        "rows": [[item["medicine_name"], item["batch_number"] or "—", item["days_to_expiry"], item["quantity"]] for item in rows]})
     else:
+        trend = analytics.sales_trend_series_between(start_date, end_date) if start_date and end_date else analytics.sales_trend_series(days=days)
         series = [{"name": "Revenue", "data": trend["revenue"]}]
         if any(word in text for word in ("profit", "sales", "trend", "compare", "dashboard", "report")):
             series.append({"name": "Profit", "data": trend["profit"]})
@@ -180,32 +183,11 @@ def _deterministic_visualization(user_message: str, days: int, start_date=None, 
 
 
 def build_visualization(user_message: str, days: int = 14, start_date=None, end_date=None) -> dict:
-    """Returns {"blocks": [...]} — validated, ready for the frontend.
-    Falls back to an empty block list (never raises) if the LLM output is
-    malformed, so a visualization failure never breaks the chat response
-    itself — the panel would just show 'nothing to display' rather than
-    crash the page."""
-    days = max(1, min(int(days), 365))
-    data_context = _gather_visualization_data(days, start_date, end_date)
-    messages = [{
-        "role": "user",
-        "content": f"{data_context}\n\n=== OWNER'S REQUEST ===\n{user_message}",
-    }]
+    """Build the canvas directly from live, traceable database analytics.
 
-    try:
-        raw = tool_executor.generate_response(
-    VIZ_SYSTEM_PROMPT, messages, max_tokens=tool_executor.VISUALIZATION_MAX_TOKENS
-)
-        parsed = _extract_json(raw)
-        blocks = parsed.get("blocks", [])
-        valid_blocks = [b for b in blocks if _validate_block(b)]
-        if not valid_blocks and blocks:
-            print(f"[AlokSaar] Visualization: {len(blocks)} block(s) returned but none were valid: {blocks}")
-        if valid_blocks:
-            return {"blocks": valid_blocks, "source": "ai"}
-        return _deterministic_visualization(user_message, days, start_date, end_date)
-    except Exception as e:
-        print(f"[AlokSaar] Visualization generation failed for request '{user_message}': {e}")
-        fallback = _deterministic_visualization(user_message, days, start_date, end_date)
-        fallback["warning"] = "AI visualization was unavailable, so this canvas was built from live business data."
-        return fallback
+    The chat endpoint already performs AI reasoning. Avoiding a second LLM
+    request here keeps the canvas responsive, removes duplicate full-data
+    collection, and guarantees a useful visual when the provider is offline.
+    """
+    days = max(1, min(int(days), 365))
+    return _deterministic_visualization(user_message, days, start_date, end_date)

@@ -5,6 +5,7 @@ with immediately after setup.
 
 Run with:  python -m data.seed
 """
+import os
 import random
 from datetime import date, datetime, timedelta
 
@@ -40,6 +41,11 @@ SUPPLIERS = [
 def seed():
     app = create_app()
     with app.app_context():
+        if app.config.get("USING_NEON") and os.getenv("ALLOW_DATABASE_RESET") != "1":
+            raise RuntimeError(
+                "Refusing to drop a Neon database. Set ALLOW_DATABASE_RESET=1 only "
+                "when you intentionally want to erase and reseed every Neon table."
+            )
         print("Dropping and recreating all tables...")
         db.drop_all()
         db.create_all()

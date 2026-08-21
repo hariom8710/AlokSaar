@@ -83,7 +83,11 @@ def business_health_score():
     # Inventory: % of medicines within healthy stock band (not low, not excess)
     healthy = 0
     for m in medicines:
-        stock = m.current_stock
+        stock = (
+                    db.session.query(func.coalesce(func.sum(StockBatch.quantity), 0))
+                    .filter(StockBatch.medicine_id == m.id)
+                    .scalar()
+                )
         if m.reorder_level <= stock <= m.ideal_stock_level * 1.5:
             healthy += 1
     inventory_score = (healthy / total_stock_positions) * 100
@@ -151,27 +155,44 @@ def expiry_risk_items(within_days: int = EXPIRY_WARNING_DAYS):
     return sorted(results, key=lambda x: x["days_to_expiry"])
 
 
+
 def dead_stock_items(days: int = DEAD_STOCK_DAYS):
     """Medicines with stock on hand but no sales in the given window."""
     cutoff = _period_start(days)
-    medicines = Medicine.query.all()
+
+    medicines = (
+        db.session.query(
+            Medicine,
+            func.coalesce(func.sum(StockBatch.quantity), 0).label("current_stock")
+        )
+        .outerjoin(StockBatch, Medicine.id == StockBatch.medicine_id)
+        .group_by(Medicine.id)
+        .all()
+    )
+
     results = []
-    for m in medicines:
-        if m.current_stock <= 0:
+
+    for medicine, current_stock in medicines:
+
+        if current_stock <= 0:
             continue
-        recent_sale = Sale.query.filter(
-            Sale.medicine_id == m.id, Sale.sale_date >= cutoff
+
+        recent_sale = db.session.query(Sale.id).filter(
+            Sale.medicine_id == medicine.id,
+            Sale.sale_date >= cutoff
         ).first()
+
         if recent_sale is None:
-            value = float(m.unit_cost or 0) * m.current_stock
+            value = float(medicine.unit_cost or 0) * current_stock
+
             results.append({
-                "medicine_id": m.id,
-                "medicine_name": m.name,
-                "current_stock": m.current_stock,
+                "medicine_id": medicine.id,
+                "medicine_name": medicine.name,
+                "current_stock": current_stock,
                 "value": round(value, 2),
             })
-    return sorted(results, key=lambda x: -x["value"])
 
+    return sorted(results, key=lambda x: x["value"], reverse=True)
 
 def low_stock_items():
     medicines = Medicine.query.all()

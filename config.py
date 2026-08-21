@@ -1,5 +1,6 @@
 
 import os
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -33,11 +34,23 @@ class Config:
     '''
 
 # Render/Heroku compatibility
-database_url = os.getenv("DATABASE_URL")
+def _normalize_database_url(value):
+    """Normalize provider URLs and require TLS for Neon connections."""
+    if not value:
+        return None
+    value = value.strip()
+    if value.startswith("postgres://"):
+        value = "postgresql://" + value[len("postgres://"):]
 
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    parsed = urlsplit(value)
+    if parsed.hostname and parsed.hostname.endswith(".neon.tech"):
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query.setdefault("sslmode", "require")
+        value = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+    return value
 
+
+database_url = _normalize_database_url(os.getenv("DATABASE_URL"))
 
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-me")
@@ -50,11 +63,17 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SQLALCHEMY_ENGINE_OPTIONS = {
-    "pool_pre_ping": True,
-    "pool_recycle": 180,
-    "pool_size": 5,
-    "max_overflow": 2,
+        "pool_pre_ping": True,
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "300")),
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "2")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
     }
+
+    DATABASE_URL_UNPOOLED = _normalize_database_url(
+        os.getenv("DATABASE_URL_UNPOOLED") or os.getenv("NEON_DATABASE_URL_UNPOOLED")
+    )
+    USING_NEON = bool(database_url and ".neon.tech" in database_url)
 
     # ---------- LLM ----------
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()

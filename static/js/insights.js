@@ -26,6 +26,9 @@ function escapeHtml(str) {
 }
 
 function renderMarkdown(text) {
+  if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+    return `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
+  }
   const rawHtml = marked.parse(text, { breaks: true });
   return DOMPurify.sanitize(rawHtml);
 }
@@ -116,6 +119,9 @@ async function sendMessage(text) {
   sendBtn.disabled = true;
   addTypingIndicator();
 
+  lastVizRequest = text;
+  const canvasRequest = generateCanvas(text);
+
   try {
     const res = await fetch("/api/insights/message", {
       method: "POST",
@@ -134,13 +140,12 @@ async function sendMessage(text) {
     // Every message on the Insights page attempts to update the canvas —
     // this is the dedicated visualization workspace, so unlike the main
     // chat page (which only offers a link), here we generate directly.
-    lastVizRequest = text;
-    await generateCanvas(text);
   } catch (e) {
     removeTypingIndicator();
     addMessage("assistant", "Couldn't reach the AlokSaar backend.", true);
   } finally {
     sendBtn.disabled = false;
+    await canvasRequest;
   }
 }
 
@@ -198,6 +203,28 @@ function renderChartBlock(block) {
   `;
   const ctx = wrap.querySelector("canvas");
   const palette = ["#F5B942", "#3DDC97", "#FF6B6B", "#8A8FE0"];
+  if (typeof Chart === "undefined") {
+    ctx.remove();
+    const fallback = document.createElement("div");
+    fallback.className = "canvas-chart-fallback";
+    fallback.setAttribute("role", "img");
+    fallback.setAttribute("aria-label", `${block.title || "Chart"}. Showing accessible data bars.`);
+    const labels = block.labels || [];
+    const values = (block.series || []).flatMap(series => series.data || []).filter(Number.isFinite);
+    const maxValue = Math.max(...values.map(value => Math.abs(value)), 1);
+    fallback.innerHTML = (block.series || []).map((series, seriesIndex) => `
+      <section class="canvas-fallback-series">
+        <strong style="--series-color:${palette[seriesIndex % palette.length]}">${escapeHtml(series.name || `Series ${seriesIndex + 1}`)}</strong>
+        ${(series.data || []).map((value, valueIndex) => `
+          <div class="canvas-fallback-row">
+            <span title="${escapeHtml(String(labels[valueIndex] ?? ""))}">${escapeHtml(String(labels[valueIndex] ?? valueIndex + 1))}</span>
+            <i style="--bar-width:${Math.max(2, Math.abs(Number(value) || 0) / maxValue * 100)}%;--series-color:${palette[seriesIndex % palette.length]}"></i>
+            <b>${escapeHtml(String(value))}</b>
+          </div>`).join("")}
+      </section>`).join("");
+    wrap.querySelector(".canvas-chart-wrap").appendChild(fallback);
+    return wrap;
+  }
   const chart = new Chart(ctx, {
     type: block.chart_type === "bar" ? "bar" : "line",
     data: {
@@ -263,7 +290,11 @@ function renderCanvas(blocks) {
   destroyCanvasCharts();
   canvasEl.innerHTML = "";
   currentBlocks = Array.isArray(blocks) ? blocks : [];
-  localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(currentBlocks));
+  try {
+    localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(currentBlocks));
+  } catch (error) {
+    console.warn("Insights canvas could not be saved locally:", error);
+  }
 
   if (currentBlocks.length === 0) {
     canvasEl.innerHTML = `<div class="empty-state" style="padding: 60px 20px;">Nothing to show for that request yet — try being more specific, e.g. "bar chart of revenue by day" or "table of expiring medicines".</div>`;
@@ -283,6 +314,7 @@ function renderCanvas(blocks) {
 }
 
 async function generateCanvas(message) {
+  canvasEl.setAttribute("aria-busy", "true");
   canvasEl.innerHTML = `<div class="empty-state" style="padding: 60px 20px;">Building your canvas…</div>`;
   try {
     const params = new URLSearchParams({ days: rangeEl.value });
@@ -294,15 +326,20 @@ async function generateCanvas(message) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     });
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(`Backend returned ${res.status} instead of JSON.`);
+    }
     const data = await res.json();
     if (!res.ok) {
-      canvasEl.innerHTML = `<div class="empty-state" style="padding: 60px 20px; color: var(--danger-red);">${escapeHtml(data.error || "Could not build the canvas.")}</div>`;
-      return;
+      throw new Error(data.error || `Canvas request failed (${res.status}).`);
     }
     renderCanvas(data.blocks);
     if (data.warning) addMessage("assistant", data.warning);
   } catch (e) {
-    canvasEl.innerHTML = `<div class="empty-state" style="padding: 60px 20px; color: var(--danger-red);">Couldn't reach the backend.</div>`;
+    canvasEl.innerHTML = `<div class="empty-state canvas-error" style="padding: 60px 20px; color: var(--danger-red);">${escapeHtml(e.message || "Could not build the canvas.")}</div>`;
+  } finally {
+    canvasEl.setAttribute("aria-busy", "false");
   }
 }
 

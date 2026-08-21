@@ -35,8 +35,11 @@ def create_app(config_class=Config):
 
     # Initialize the RAG knowledge base (ChromaDB) once at startup
     with app.app_context():
-        #create PostgresSQL tables if they don't exist
-        db.create_all()
+        # SQLite remains zero-setup. Neon schema work uses the direct
+        # connection workflow in scripts/neon_db.py, not the pooled runtime
+        # connection.
+        if not app.config.get("USING_NEON"):
+            db.create_all()
 
         #Initialize the ChromaDB knowledge base
         from app.rag.retriever import init_knowledge_base

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}AI Copilot — AlokSaar{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="page-header chat-page-header">
   <div>
     <span class="eyebrow">AI Pharmacy Assistant</span>
     <h1 class="page-title">Ask AlokSaar anything about your business.</h1>
@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<div class="suggested-prompts" id="suggested-prompts" style="text-align: center;">
+<div class="suggested-prompts" id="suggested-prompts" aria-label="Suggested questions">
   <button class="suggested-prompt" data-prompt="Hi! What can you help me with?">👋 Say hi</button>
   <button class="suggested-prompt" data-prompt="Why is my profit low this month?">Why is my profit low this month?</button>
   <button class="suggested-prompt" data-prompt="Which medicines should I order next week?">Which medicines should I order next week?</button>
@@ -18,9 +18,10 @@
 </div>
 
 <div class="chat-shell">
-  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
   <div class="chat-input-bar">
-    <textarea id="chat-input" placeholder="Ask me anything — say hi, or ask about profit, inventory, expiry, purchasing, compliance…" rows="1"></textarea>
+    <label class="sr-only" for="chat-input">Message AlokSaar</label>
+    <textarea id="chat-input" aria-label="Message AlokSaar" placeholder="Ask about profit, inventory, expiry, purchasing, or compliance…" rows="1"></textarea>
     <button class="send-btn" id="send-btn">Send</button>
   </div>
 </div>

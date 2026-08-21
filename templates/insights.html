@@ -15,7 +15,7 @@
       </div>
       <button class="insights-chat-close" id="insights-chat-close" type="button" aria-label="Close Insights Assistant">×</button>
     </div>
-    <div class="chat-messages" id="insights-messages"></div>
+    <div class="chat-messages" id="insights-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
     <div class="chat-input-bar insights-input-bar">
       <textarea id="insights-input" placeholder="e.g. Show revenue trend for last 2 weeks" rows="1"></textarea>
       <button class="send-btn" id="insights-send-btn">Send</button>
@@ -44,7 +44,7 @@
         <button class="suggested-prompt" id="download-report-btn">⇩ Download report</button>
       </div>
     </div>
-    <div class="insights-canvas" id="insights-canvas">
+    <div class="insights-canvas" id="insights-canvas" aria-live="polite" aria-busy="false">
       <div class="empty-state" style="padding: 60px 20px;">
         Ask something on the left — e.g. "show me a revenue chart" or "table of low stock items" — and it'll render here.
       </div>

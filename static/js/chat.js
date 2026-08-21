@@ -10,8 +10,29 @@ function escapeHtml(str) {
 }
 
 function renderAssistantContent(text) {
+  if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+    return `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
+  }
   const rawHtml = marked.parse(text, { breaks: true });
   return DOMPurify.sanitize(rawHtml);
+}
+
+async function copyMessage(button, content) {
+  try {
+    await navigator.clipboard.writeText(content);
+  } catch (_) {
+    const helper = document.createElement("textarea");
+    helper.value = content;
+    helper.style.position = "fixed";
+    helper.style.opacity = "0";
+    document.body.appendChild(helper);
+    helper.select();
+    document.execCommand("copy");
+    helper.remove();
+  }
+  const original = button.textContent;
+  button.textContent = "✓ Copied";
+  window.setTimeout(() => { button.textContent = original; }, 1400);
 }
 
 function scrollToBottom() {
@@ -23,6 +44,7 @@ function scrollToBottom() {
 function addMessage(role, content, isError = false, offerVisualization = false, originalUserMessage = "") {
   const msg = document.createElement("div");
   msg.className = `msg ${role}`;
+  msg.dataset.content = content;
   const avatar = role === "assistant" ? "☀" : "🧑";
   const bodyHtml = (role === "assistant" && !isError)
     ? renderAssistantContent(content)
@@ -32,11 +54,25 @@ function addMessage(role, content, isError = false, offerVisualization = false, 
     ? `<button class="viz-trigger-btn" data-request="${escapeHtml(originalUserMessage)}">📊 Open in Insights</button>`
     : "";
 
+  const actionsHtml = role === "user"
+    ? `<div class="msg-actions" aria-label="Message actions">
+        <button type="button" class="msg-action msg-copy" title="Copy message">⧉ <span>Copy</span></button>
+        <button type="button" class="msg-action msg-edit" title="Edit message">✎ <span>Edit</span></button>
+        <button type="button" class="msg-action msg-resend" title="Resend message">↻ <span>Resend</span></button>
+      </div>`
+    : `<div class="msg-actions" aria-label="Message actions">
+        <button type="button" class="msg-action msg-copy" title="Copy response">⧉ <span>Copy</span></button>
+        ${isError ? "" : `<button type="button" class="msg-action msg-regenerate" title="Regenerate response">↻ <span>Regenerate</span></button>`}
+      </div>`;
+
   msg.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
-    <div class="msg-bubble ${role === "assistant" ? "md-content" : ""} ${isError ? "msg-error" : ""}">
-      ${bodyHtml}
-      ${vizButtonHtml}
+    <div class="msg-content">
+      <div class="msg-bubble ${role === "assistant" ? "md-content" : ""} ${isError ? "msg-error" : ""}">
+        ${bodyHtml}
+        ${vizButtonHtml}
+      </div>
+      ${actionsHtml}
     </div>
   `;
   messagesEl.appendChild(msg);
@@ -49,6 +85,20 @@ function addMessage(role, content, isError = false, offerVisualization = false, 
     });
   }
 
+  msg.querySelector(".msg-copy")?.addEventListener("click", (event) => copyMessage(event.currentTarget, content));
+  msg.querySelector(".msg-edit")?.addEventListener("click", () => {
+    inputEl.value = content;
+    inputEl.dispatchEvent(new Event("input"));
+    inputEl.focus();
+  });
+  msg.querySelector(".msg-resend")?.addEventListener("click", () => sendMessage(content));
+  msg.querySelector(".msg-regenerate")?.addEventListener("click", () => {
+    let previous = msg.previousElementSibling;
+    while (previous && !previous.classList.contains("user")) previous = previous.previousElementSibling;
+    const request = previous?.dataset.content;
+    if (request) sendMessage(request);
+  });
+
   scrollToBottom();
   return msg;
 }
@@ -59,8 +109,10 @@ function addTypingIndicator() {
   msg.id = "typing-indicator";
   msg.innerHTML = `
     <div class="msg-avatar">☀</div>
-    <div class="msg-bubble">
-      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    <div class="msg-content">
+      <div class="msg-bubble">
+        <div class="typing-indicator"><span></span><span></span><span></span></div>
+      </div>
     </div>
   `;
   messagesEl.appendChild(msg);
@@ -87,7 +139,7 @@ async function loadHistory() {
 }
 
 async function sendMessage(text) {
-  if (!text.trim()) return;
+  if (!text.trim() || sendBtn.disabled) return;
   addMessage("user", text);
   inputEl.value = "";
   inputEl.style.height = "auto";

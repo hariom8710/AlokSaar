@@ -16,9 +16,9 @@ class Medicine(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), default=0)
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
 
-    batches = db.relationship("StockBatch", backref="medicine", lazy=True, cascade="all, delete-orphan")
-    sales = db.relationship("Sale", backref="medicine", lazy=True)
-    purchases = db.relationship("Purchase", backref="medicine", lazy=True)
+    batches = db.relationship("StockBatch", backref="medicine", lazy="selectin", cascade="all, delete-orphan")
+    sales = db.relationship("Sale", backref="medicine", lazy="selectin")
+    purchases = db.relationship("Purchase", backref="medicine", lazy="selectin")
 
     @property
     def current_stock(self):
