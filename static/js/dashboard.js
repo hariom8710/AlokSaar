@@ -12,10 +12,11 @@ async function fetchJSON(url) {
 }
 
 function statCard(label, value, deltaText, deltaClass, alertClass) {
+  const valueClass = String(value).length >= 10 ? " stat-value-long" : "";
   return `
     <div class="card ${alertClass || ""}">
       <div class="card-label">${label}</div>
-      <div class="stat-value">${value}</div>
+      <div class="stat-value${valueClass}">${value}</div>
       ${deltaText ? `<div class="stat-delta ${deltaClass}">${deltaText}</div>` : ""}
     </div>`;
 }

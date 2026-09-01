@@ -6,12 +6,17 @@ dashboard_bp = Blueprint("dashboard", __name__)
 
 @dashboard_bp.route("/")
 def index():
-    return render_template("dashboard.html")
+    return render_template("chat.html", active="chat")
+
+
+@dashboard_bp.route("/dashboard")
+def dashboard_page():
+    return render_template("dashboard.html", active="dashboard")
 
 
 @dashboard_bp.route("/chat")
 def chat_page():
-    return render_template("chat.html")
+    return render_template("chat.html", active="chat")
 
 
 @dashboard_bp.route("/api/dashboard/snapshot")

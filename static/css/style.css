@@ -275,6 +275,28 @@ body {
   color: var(--ink-100);
 }
 
+#snapshot-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+}
+
+#snapshot-grid > .card {
+  container-type: inline-size;
+}
+
+#snapshot-grid .stat-value-long {
+  width: 100%;
+  min-width: 0;
+  font-size: clamp(16px, 1.65vw, 22px);
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+@supports (font-size: 1cqi) {
+  #snapshot-grid .stat-value-long {
+    font-size: clamp(16px, 9cqi, 22px);
+  }
+}
+
 .stat-delta { font-size: 12.5px; font-weight: 600; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
 .stat-delta.up { color: var(--ok-green); }
 .stat-delta.down { color: var(--danger-red); }

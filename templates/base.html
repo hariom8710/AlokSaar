@@ -27,11 +27,11 @@
       </div>
     </div>
     <nav class="nav">
-      <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
-        <span class="nav-icon">◈</span> Dashboard
-      </a>
-      <a href="{{ url_for('dashboard.chat_page') }}" class="nav-link {% if active == 'chat' %}active{% endif %}">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if active == 'chat' %}active{% endif %}">
         <span class="nav-icon">◎</span> AI Chat
+      </a>
+      <a href="{{ url_for('dashboard.dashboard_page') }}" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">◈</span> Dashboard
       </a>
       <a href="{{ url_for('insights.insights_page') }}" class="nav-link {% if active == 'insights' %}active{% endif %}">
         <span class="nav-icon">📊</span> Insights Canvas
