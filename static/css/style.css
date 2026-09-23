@@ -1135,6 +1135,8 @@ body {
     border-right: 1px solid var(--navy-line);
     border-bottom: 0;
     box-shadow: 18px 0 50px rgba(7, 32, 35, .2);
+    /* Keep the drawer above the scrim so its links and theme control receive taps. */
+    z-index: 110;
     transform: translateX(-105%);
     transition: transform .25s ease;
   }
